@@ -1,0 +1,16 @@
+Package: spbalRef
+Type: Package
+Title: Cache bounding boxes and seeds for existing mastersamples to use in spbal
+Version: 0.1.0
+Author: Ollie Gansell
+Maintainer: Ollie Gansell <ogansell@doc.govt.nz>
+Description: This package is for mastersamples built on package spbal. It can be used to cache bounding boxes and seeds for existing mastersamples and host convenience functions to pass to spbal.  
+License: GPL-2 (GNU General Public License Version 2)
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 7.2.3
+Depends: 
+    R (>= 2.10)
+Imports: 
+    dplyr,
+    sf

@@ -4,9 +4,11 @@ library(sf)
 #Define CRS projections
 
 nztm <-"+proj=tmerc +lat_0=0 +lon_0=173 +k=0.9996 +x_0=1600000 +y_0=10000000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
+usethis::use_data(nztm,overwrite = TRUE)
 wgs84 <-"+proj=longlat +ellps=WGS84 +datum=WGS84"
+usethis::use_data(wgs84,overwrite = TRUE)
 epsg3005 <- "+proj=aea +lat_1=50 +lat_2=58.5 +lat_0=45 +lon_0=-126 +x_0=1000000 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs"
-
+usethis::use_data(epsg3005,overwrite = TRUE)
 
 # Define bounding boxes
 

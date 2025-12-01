@@ -12,7 +12,7 @@
 #'
 #' @examples
 #' #Append the uniqueID to a sample draw from the mastersample for the South Island, New Zealand
-#' uniqueID(south_nz,BASsample)
+#' uniqueID(south_nz,BAS_sample)
 #'
 uniqueID <- function(mastersample,sample){
   sample$sample$uniqueID <-paste0(mastersample$mastersample_name,

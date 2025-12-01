@@ -19,6 +19,6 @@ Append a mastersample uniqueID to a sample draw from spbal
 }
 \examples{
 #Append the uniqueID to a sample draw from the mastersample for the South Island, New Zealand
-uniqueID(south_nz,BASsample)
+uniqueID(south_nz,BAS_sample)
 
 }

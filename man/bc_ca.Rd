@@ -7,7 +7,7 @@
 \format{
 A .rda file containing the objects:
 \describe{
-  \item{bc_ca}{Random seed and bounding box for the mastersample for the Auckland Islands of New Zealand}
+  \item{bc_ca}{Random seed and bounding box for the mastersample for Brisitsh Colombia}
 }
 }
 \usage{

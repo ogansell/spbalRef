@@ -1,0 +1,324 @@
+---
+title: "Two-Stage Spatial Sampling with makePSU"
+author: "spbalRef Package"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Two-Stage Spatial Sampling with makePSU}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 7,
+  fig.height = 5
+)
+```
+
+# Introduction
+
+The `makePSU()` function implements a two-stage spatial sampling design that:
+
+1. Divides a study area into approximately equal-area primary sampling units (PSUs)
+2. Optimizes PSU boundaries to minimize area variation
+3. Selects PSUs using GRTS (Generalized Random Tessellation Stratified) sampling
+4. Generates spatially-balanced sample points within each selected PSU
+
+This approach is particularly useful for monitoring programs where:
+
+- The study area is too large to sample comprehensively
+- Resources allow visiting only a subset of locations
+- You want to maintain statistical rigor and spatial balance
+- You may want to integrate existing monitoring sites (legacy sites)
+
+# Basic Usage
+
+## Simple Example
+
+```{r eval=FALSE}
+library(spbalRef)
+library(sf)
+
+# Load your study area
+study_area <- st_read("conservation_area.shp")
+
+# Create PSUs and sample points
+results <- makePSU(
+  sf_poly = study_area,
+  psu_area = 300,        # Target 300 hectare PSUs
+  n_samples = 25,        # 25 sample points per PSU
+  island = "North"       # Use North Island master sample
+)
+
+# View summary
+print(results)
+
+# Access components
+psus <- results$primary_sample_units
+sample_points <- results$secondary_sample_units
+```
+
+## Understanding the Output
+
+The function returns a `split_poly_grts` object containing:
+
+- **primary_sample_units**: SF object with PSU polygons, areas, and selection order
+- **secondary_sample_units**: SF object with sample points and their order within PSUs
+- **optimization_summary**: Statistics from the optimization process
+- **psu_area_stats**: Summary statistics for PSU areas (mean, SD, CV, range)
+- **pielou_evenness**: Spatial balance metric (higher = better)
+
+# Optimization Process
+
+The function uses an iterative optimization approach:
+
+```{r eval=FALSE}
+results <- makePSU(
+  sf_poly = study_area,
+  psu_area = 500,
+  n_samples = 20,
+  island = "South",
+  cluster_population = 200000,    # Points for optimization
+  optimization_start = 10000,      # Starting iteration
+  optimization_step = 3000,        # Step between iterations
+  optimization_metric = "cv"       # Minimize coefficient of variation
+)
+```
+
+## Optimization Metrics
+
+Three metrics are available:
+
+1. **cv** (coefficient of variation) - Most robust, recommended for most cases
+2. **range** - Minimizes difference between largest and smallest PSU
+3. **sd** (standard deviation) - Minimizes absolute variation
+
+```{r eval=FALSE}
+# Compare metrics
+results_cv <- makePSU(study_area, psu_area = 400, n_samples = 20, 
+                      island = "North", optimization_metric = "cv")
+results_range <- makePSU(study_area, psu_area = 400, n_samples = 20,
+                        island = "North", optimization_metric = "range")
+
+# Compare results
+data.frame(
+  metric = c("CV", "Range"),
+  cv = c(results_cv$psu_area_stats$cv, results_range$psu_area_stats$cv),
+  range = c(results_cv$psu_area_stats$range, results_range$psu_area_stats$range)
+)
+```
+
+# Working with Legacy Sites
+
+If you have existing monitoring sites, you can prioritize PSUs that contain them:
+
+```{r eval=FALSE}
+# Load existing monitoring sites
+legacy_sites <- st_read("existing_plots.shp")
+
+results <- makePSU(
+  sf_poly = study_area,
+  psu_area = 400,
+  n_samples = 20,
+  island = "North",
+  legacy_sites = legacy_sites,
+  legacy_id_col = "PlotID",  # Column with site IDs
+  base_n = 10,                # Select 10 base PSUs
+  over_n = 5                  # Plus 5 oversample PSUs
+)
+
+# Check which legacy sites were selected
+selected_psus <- results$primary_sample_units %>%
+  filter(siteuse == "Base") %>%
+  filter(!is.na(PlotID))
+```
+
+# Advanced Options
+
+## Stratified Sampling
+
+Allocate samples across habitat types or other strata:
+
+```{r eval=FALSE}
+# Add stratification variable to sample frame
+study_area$habitat <- c("Forest", "Grassland", "Wetland")
+
+results <- makePSU(
+  sf_poly = study_area,
+  psu_area = 300,
+  n_samples = 15,
+  island = "South",
+  grts_caty_var = "habitat"  # Stratify by habitat
+)
+```
+
+## Minimum Distance Between PSUs
+
+Ensure PSUs are well-separated:
+
+```{r eval=FALSE}
+results <- makePSU(
+  sf_poly = study_area,
+  psu_area = 500,
+  n_samples = 20,
+  island = "North",
+  min.dist = 5000  # Minimum 5km between PSU centroids
+)
+```
+
+## Controlling Verbosity and Plotting
+
+```{r eval=FALSE}
+# Run quietly without plots
+results <- makePSU(
+  sf_poly = study_area,
+  psu_area = 300,
+  n_samples = 25,
+  island = "North",
+  plot = FALSE,
+  verbose = FALSE
+)
+```
+
+# Exporting Results
+
+## Save to Shapefiles
+
+```{r eval=FALSE}
+library(sf)
+
+# Export PSUs
+st_write(results$primary_sample_units, 
+         "outputs/PSUs.shp", 
+         delete_dsn = TRUE)
+
+# Export sample points
+st_write(results$secondary_sample_units,
+         "outputs/sample_points.shp",
+         delete_dsn = TRUE)
+
+# Export just the base sample
+base_points <- results$secondary_sample_units %>%
+  filter(siteuse == "Base")
+
+st_write(base_points, "outputs/base_sample.gpx", 
+         driver = "GPX", delete_dsn = TRUE)
+```
+
+## Create Field Datasheets
+
+```{r eval=FALSE}
+# Create sampling datasheet
+field_sheet <- results$secondary_sample_units %>%
+  st_set_geometry(NULL) %>%
+  filter(siteuse == "Base") %>%
+  arrange(PSU_sample_order, Transect_sample_order) %>%
+  select(PSU_sample_order, Transect_sample_order, uniqueID)
+
+write.csv(field_sheet, "outputs/field_datasheet.csv", row.names = FALSE)
+```
+
+# Visualization
+
+## Custom Maps with ggplot2
+
+```{r eval=FALSE}
+library(ggplot2)
+library(viridis)
+
+# Map PSUs colored by selection order
+ggplot() +
+  geom_sf(data = results$primary_sample_units,
+          aes(fill = as.numeric(PSU_sample_order)),
+          color = "white", size = 0.3) +
+  scale_fill_viridis_c(option = "plasma", na.value = "gray90",
+                       name = "Sample\nOrder") +
+  theme_minimal() +
+  labs(title = "Primary Sampling Units")
+
+# Map sample points within selected PSUs
+base_psus <- results$primary_sample_units %>% filter(siteuse == "Base")
+base_points <- results$secondary_sample_units %>% filter(siteuse == "Base")
+
+ggplot() +
+  geom_sf(data = base_psus, fill = NA, color = "gray40") +
+  geom_sf(data = base_points, aes(color = PSU_sample_order),
+          size = 2, alpha = 0.7) +
+  scale_color_viridis_c(option = "magma") +
+  theme_minimal() +
+  labs(title = "Sample Points within Base PSUs")
+```
+
+## Examine Optimization Results
+
+```{r eval=FALSE}
+library(tidyr)
+
+# Plot optimization curves
+opt_long <- results$optimization_summary %>%
+  select(n_points, cv, range, sd, pielou) %>%
+  pivot_longer(cols = c(cv, range, sd, pielou),
+               names_to = "metric", values_to = "value")
+
+ggplot(opt_long, aes(x = n_points, y = value)) +
+  geom_line(color = "steelblue", size = 1) +
+  geom_point(color = "steelblue") +
+  facet_wrap(~metric, scales = "free_y", ncol = 2) +
+  labs(title = "Optimization Metrics Across Iterations",
+       x = "Number of Points", y = "Metric Value") +
+  theme_minimal()
+```
+
+# Practical Considerations
+
+## Choosing PSU Size
+
+The target PSU area depends on:
+
+- **Total study area size**: Aim for at least 4-5 PSUs minimum
+- **Available resources**: Larger PSUs = fewer to visit
+- **Desired precision**: More PSUs = better coverage
+- **Terrain/accessibility**: Consider travel time between sites
+
+```{r eval=FALSE}
+# Calculate number of PSUs for different target areas
+study_area_ha <- as.numeric(st_area(study_area)) / 10000
+
+data.frame(
+  target_psu = c(100, 300, 500, 1000),
+  n_psus = round(study_area_ha / c(100, 300, 500, 1000))
+)
+```
+
+## Sample Size Recommendations
+
+For the secondary sample (points per PSU):
+
+- **Vegetation plots**: 15-30 points typical
+- **Acoustic monitoring**: 10-20 points
+- **Camera traps**: 5-15 points depending on density needs
+
+## Computational Performance
+
+For large study areas or many iterations:
+
+- Reduce `cluster_population` (but not below ~50,000)
+- Increase `optimization_step` for faster but coarser optimization
+- Use fewer PSUs (larger `psu_area`)
+
+# References
+
+- Stevens, D.L. and Olsen, A.R. (2004). Spatially Balanced Sampling of Natural Resources. *Journal of the American Statistical Association* 99:262-278.
+
+- Theobald, D.M., et al. (2007). Using GIS to Generate Spatially Balanced Random Survey Designs for Natural Resource Applications. *Environmental Management* 40:134-146.
+
+- Robertson, B.L., et al. (2018). BAS: Balanced Acceptance Sampling of Natural Resources. *Biometrics* 74:626-634.
+
+# See Also
+
+- `BAS()` - Balanced acceptance sampling for secondary points
+- `spsurvey::grts()` - GRTS sampling implementation  
+- `sp_balance()` - Spatial balance assessment

@@ -24,6 +24,9 @@
 #'   (standard deviation). Ignored if \code{quick_mode = TRUE}.
 #' @param n_samples Integer. Number of secondary sample points to select within
 #'   each PSU.
+#' @param min_radius Numeric or NULL. Minimum distance (in meters) between
+#'   secondary sample points, passed to \code{\link[spbal]{BAS}} as
+#'   \code{minRadius}. Default \code{NULL} (no minimum distance constraint).
 #' @param island Character. Which New Zealand island master sample to use.
 #'   One of \code{"North"} or \code{"South"}.
 #' @param min.dist Numeric. Minimum distance between PSU centroids for GRTS
@@ -192,6 +195,7 @@ makePSU <- function(sf_poly,
                     optimization_step = 3000,
                     optimization_metric = c("cv", "range", "sd"),
                     n_samples,
+                    min_radius = NULL,
                     island = c("North", "South"),
                     min.dist = 0,
                     base_n = NULL,
@@ -694,12 +698,18 @@ makePSU <- function(sf_poly,
     boundingbox = bb_ref$bb,
     seeds = bb_ref$seed,
     verbose = FALSE,
-    minRadius = NULL
+    minRadius = min_radius
   )
 
   # Add unique IDs
-  points_rnd <- spbalRef::uniqueID(bb_ref, points_rnd$sample)
-  points_rnd$uniqueID <- paste0(points_rnd$sample, points_rnd$SiteID)
+  if (!is.null(min_radius)) {
+    bas_result <- points_rnd$minRadius
+    bas_result$uniqueID <- paste0(bb_ref$mastersample_name, bas_result$SiteID)
+    points_rnd <- bas_result
+  } else {
+    points_rnd <- spbalRef::uniqueID(bb_ref, points_rnd$sample)
+    points_rnd$uniqueID <- paste0(points_rnd$sample, points_rnd$SiteID)
+  }
 
   # Select secondary sample points within each PSU
   sample_points <- points_rnd %>%
@@ -752,6 +762,7 @@ makePSU <- function(sf_poly,
       psu_area = psu_area,
       cluster_population = cluster_population,
       n_samples = n_samples,
+      min_radius = min_radius,
       island = island,
       seed = seed,
       base_n = base_n,

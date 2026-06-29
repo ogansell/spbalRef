@@ -12,6 +12,7 @@ makePSU(
   optimization_step = 3000,
   optimization_metric = c("cv", "range", "sd"),
   n_samples,
+  min_radius = NULL,
   island = c("North", "South"),
   min.dist = 0,
   base_n = NULL,
@@ -50,6 +51,10 @@ optimization loop (default = 3000). Ignored if \code{quick_mode = TRUE}.}
 
 \item{n_samples}{Integer. Number of secondary sample points to select within
 each PSU.}
+
+\item{min_radius}{Numeric or NULL. Minimum distance (in meters) between
+secondary sample points, passed to \code{\link[spbal]{BAS}} as
+\code{minRadius}. Default \code{NULL} (no minimum distance constraint).}
 
 \item{island}{Character. Which New Zealand island master sample to use.
 One of \code{"North"} or \code{"South"}.}

@@ -711,9 +711,17 @@ makePSU <- function(sf_poly,
     points_rnd$uniqueID <- paste0(points_rnd$sample, points_rnd$SiteID)
   }
 
+  # Only join against PSUs that were actually selected (Base/Over). Joining
+  # against every PSU (including unselected ones, which have
+  # PSU_sample_order = NA) lumped BAS points that fell in non-selected PSUs
+  # into a bogus PSU_sample_order = NA group that then got sampled from too.
+  selected_psus <- equal_areas %>%
+    filter(!is.na(PSU_sample_order))
+
   # Select secondary sample points within each PSU
   sample_points <- points_rnd %>%
-    st_join(dplyr::select(equal_areas, PSU_sample_order, siteuse)) %>%
+    st_join(dplyr::select(selected_psus, PSU_sample_order, siteuse)) %>%
+    filter(!is.na(PSU_sample_order)) %>%
     group_by(PSU_sample_order) %>%
     mutate(
       Transect_sample_order = rank(SiteID),
@@ -726,14 +734,39 @@ makePSU <- function(sf_poly,
     dplyr::select(PSU_sample_order, Transect_sample_order,
                   siteuse, uniqueID)
 
-  # Check if all PSUs have enough points
-  points_per_psu <- sample_points %>%
-    group_by(PSU_sample_order) %>%
-    tally()
+  # Check if all selected PSUs have enough sample points. Compare against the
+  # full set of selected PSU IDs -- not just the groups present in
+  # sample_points -- so a PSU that received ZERO BAS points (which never
+  # forms a group_by() group at all) is still detected instead of silently
+  # vanishing from secondary_sample_units.
+  selected_ids <- as.numeric(
+    str_replace_all(selected_psus$PSU_sample_order, "[-[:alpha:]]", "")
+  )
+  points_per_psu <- tibble::tibble(PSU_sample_order = selected_ids) %>%
+    left_join(
+      sf::st_drop_geometry(sample_points) %>%
+        group_by(PSU_sample_order) %>%
+        tally(),
+      by = "PSU_sample_order"
+    ) %>%
+    mutate(n = ifelse(is.na(n), 0L, n))
 
-  if(any(points_per_psu$n < n_samples)) {
-    warning(sprintf("%d PSU(s) have fewer than %d sample points",
-                    sum(points_per_psu$n < n_samples), n_samples))
+  n_empty <- sum(points_per_psu$n == 0)
+  n_short <- sum(points_per_psu$n > 0 & points_per_psu$n < n_samples)
+
+  if(n_empty > 0) {
+    warning(sprintf(
+      "%d PSU(s) received ZERO secondary sample points and are missing entirely from secondary_sample_units (PSU_sample_order: %s)",
+      n_empty,
+      paste(sort(points_per_psu$PSU_sample_order[points_per_psu$n == 0]), collapse = ", ")
+    ))
+  }
+  if(n_short > 0) {
+    warning(sprintf(
+      "%d PSU(s) have fewer than %d sample points (PSU_sample_order: %s)",
+      n_short, n_samples,
+      paste(sort(points_per_psu$PSU_sample_order[points_per_psu$n > 0 & points_per_psu$n < n_samples]), collapse = ", ")
+    ))
   }
 
   # Calculate final statistics

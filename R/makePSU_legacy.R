@@ -245,32 +245,38 @@ makePSU_legacy <- function(sf_poly,
   equal_area_centres$X <- coords[, 1]
   equal_area_centres$Y <- coords[, 2]
 
-  # Tag legacy PSUs: attach the legacy_id_col of whichever legacy site(s)
-  # actually fall within each PSU polygon (should normally be the site(s)
-  # that seeded it, since it was clustered around their nearest points).
-  legacy_join <- st_join(
-    legacy_sites[, legacy_id_col],
-    equal_areas[, "id"]
-  ) %>%
-    st_set_geometry(NULL) %>%
-    tidyr::drop_na(id) %>%
-    group_by(id) %>%
-    summarise(
-      !!legacy_id_col := paste(unique(.data[[legacy_id_col]]), collapse = "; "),
-      .groups = "drop"
-    )
+  # Tag legacy PSUs deterministically. The clustering loop above assigned the
+  # seeded cluster labels 1:n_legacy (site i is the i-th row of legacy_sites),
+  # and because the Voronoi cells are built from those cluster centroids in
+  # label order, the PSU whose id equals i (for i <= n_legacy) is guaranteed
+  # to be the PSU seeded for legacy site i. Using this cluster-id mapping is
+  # robust, unlike a point-in-polygon lookup, which silently drops a site that
+  # happens to sit exactly on a Voronoi cell boundary.
+  legacy_lookup <- tibble::tibble(
+    id = seq_len(n_legacy),
+    !!legacy_id_col := as.character(legacy_sites[[legacy_id_col]])
+  )
 
   equal_area_centres <- equal_area_centres %>%
-    left_join(legacy_join, by = "id") %>%
+    left_join(legacy_lookup, by = "id") %>%
     mutate(is_legacy = !is.na(.data[[legacy_id_col]]))
 
   n_tagged <- sum(equal_area_centres$is_legacy)
   if(n_tagged < n_legacy) {
     warning(sprintf(
-      "%d legacy site(s) did not fall inside their seeded PSU polygon (only %d of %d PSUs tagged). Voronoi boundaries may not follow cluster assignment exactly.",
-      n_legacy - n_tagged, n_tagged, n_legacy
+      "Only %d of %d legacy PSUs were tagged with a legacy id; cluster ids did not map 1:1 to seeded sites.",
+      n_tagged, n_legacy
     ))
   }
+
+  # Carry the is_legacy flag and the legacy id (e.g. 'name') onto the polygon
+  # output too, not just onto the selection centroids, so the returned
+  # primary_sample_units actually expose which PSUs are legacy-seeded.
+  equal_areas <- equal_areas %>%
+    left_join(
+      sf::st_set_geometry(equal_area_centres, NULL)[, c("id", "is_legacy", legacy_id_col)],
+      by = "id"
+    )
 
   # Check spatial balance
   pielou <- sp_balance(

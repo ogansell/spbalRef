@@ -11,8 +11,11 @@
 #' @export
 #'
 #' @examples
+#' \dontrun{
 #' #Append the uniqueID to a sample draw from the mastersample for the South Island, New Zealand
+#' BAS_sample <- spbal::BAS(shapefile = south_nz$bb, n = 10, seeds = south_nz$seed)
 #' uniqueID(south_nz,BAS_sample)
+#' }
 #'
 uniqueID <- function(mastersample,sample){
   sample$sample$uniqueID <-paste0(mastersample$mastersample_name,

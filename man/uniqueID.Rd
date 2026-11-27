@@ -18,7 +18,10 @@ An sf point file from spbal with the uniqueID of an existing mastersample append
 Append a mastersample uniqueID to a sample draw from spbal
 }
 \examples{
+\dontrun{
 #Append the uniqueID to a sample draw from the mastersample for the South Island, New Zealand
+BAS_sample <- spbal::BAS(shapefile = south_nz$bb, n = 10, seeds = south_nz$seed)
 uniqueID(south_nz,BAS_sample)
+}
 
 }

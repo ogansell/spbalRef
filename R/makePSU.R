@@ -176,11 +176,8 @@
 #' \code{\link[spsurvey]{sp_balance}} for spatial balance metrics
 #'
 #' @export
-#' @importFrom sf st_union st_as_sf st_transform st_crs st_sample st_area
-#'   st_cast st_bbox st_intersection st_centroid st_coordinates st_geometry
-#'   st_set_geometry st_join st_intersects
-#' @importFrom dplyr bind_rows group_by summarise mutate arrange filter
-#'   left_join rename select slice_head tally first
+#' @importFrom sf st_union st_as_sf st_transform st_crs st_sample st_area st_cast st_bbox st_intersection st_centroid st_coordinates st_geometry st_set_geometry st_join st_intersects
+#' @importFrom dplyr bind_rows group_by summarise mutate arrange filter left_join rename select slice_head tally first "%>%"
 #' @importFrom tibble as_tibble
 #' @importFrom tidyr drop_na
 #' @importFrom stringr str_replace_all
@@ -388,7 +385,7 @@ makePSU <- function(sf_poly,
     bc_clust <- st_as_sf(bc_clust, coords = c("lon", "lat"))
     bc_clust <- bc_clust %>%
       group_by(bc_clust) %>%
-      summarize(geometry = st_union(geometry)) %>%
+      summarise(geometry = st_union(geometry)) %>%
       st_centroid()
 
     bc_clust <- do.call(rbind, st_geometry(bc_clust)) %>%
@@ -412,7 +409,7 @@ makePSU <- function(sf_poly,
     equal_areas$area <- st_area(equal_areas)/10000
     equal_areas <- equal_areas %>%
       group_by(id) %>%
-      summarize()
+      summarise()
     equal_areas$area <- st_area(equal_areas)/10000
 
     # Make centroids for PSU selection
@@ -495,7 +492,7 @@ makePSU <- function(sf_poly,
       bc_clust <- st_as_sf(bc_clust, coords = c("lon", "lat"))
       bc_clust <- bc_clust %>%
         group_by(bc_clust) %>%
-        summarize(geometry = st_union(geometry)) %>%
+        summarise(geometry = st_union(geometry)) %>%
         st_centroid()
 
       bc_clust <- do.call(rbind, st_geometry(bc_clust)) %>%
@@ -518,7 +515,7 @@ makePSU <- function(sf_poly,
       equal_areas$area <- st_area(equal_areas)/10000
       equal_areas <- equal_areas %>%
         group_by(id) %>%
-        summarize()
+        summarise()
       equal_areas$area <- st_area(equal_areas)/10000
       equal_areas$iteration <- n_points
 
@@ -604,6 +601,7 @@ makePSU <- function(sf_poly,
     if(verbose) message("Processing legacy sites...")
 
     # Check if legacy sites are in frame
+    legacy_sites <- st_transform(legacy_sites, st_crs(sf_poly))
     legacy_in_frame <- st_intersects(legacy_sites, sf_poly, sparse = FALSE)
     if(sum(legacy_in_frame) < nrow(legacy_sites)) {
       warning(sprintf("%d legacy site(s) outside sample frame and will be ignored",

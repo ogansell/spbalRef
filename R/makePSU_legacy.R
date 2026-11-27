@@ -31,17 +31,15 @@
 #'   identifying which legacy site(s) seeded each PSU.
 #'
 #' @export
-#' @importFrom sf st_union st_as_sf st_transform st_crs st_sample st_area
-#'   st_cast st_bbox st_intersection st_centroid st_coordinates st_geometry
-#'   st_set_geometry st_join st_intersects st_distance
-#' @importFrom dplyr bind_rows group_by summarise mutate arrange filter
-#'   left_join rename select slice_head tally first n_distinct
+#' @importFrom sf st_union st_as_sf st_transform st_crs st_sample st_area st_cast st_bbox st_intersection st_centroid st_coordinates st_geometry st_set_geometry st_join st_intersects st_distance
+#' @importFrom dplyr bind_rows group_by summarise mutate arrange filter left_join rename select slice_head tally first n_distinct row_number "%>%"
 #' @importFrom tibble as_tibble
 #' @importFrom tidyr drop_na
 #' @importFrom stringr str_replace_all
 #' @importFrom spsurvey grts sp_rbind sp_balance
 #' @importFrom anticlust balanced_clustering
 #' @importFrom dismo voronoi
+#' @importFrom rlang ":=" ".data"
 makePSU_legacy <- function(sf_poly,
                            psu_area,
                            cluster_population = 50000,
@@ -213,7 +211,7 @@ makePSU_legacy <- function(sf_poly,
     st_as_sf(coords = c("lon", "lat"))
   bc_clust_sf <- bc_clust_sf %>%
     group_by(bc_clust) %>%
-    summarize(geometry = st_union(geometry)) %>%
+    summarise(geometry = st_union(geometry)) %>%
     st_centroid()
 
   bc_clust_mat <- do.call(rbind, st_geometry(bc_clust_sf)) %>%
@@ -235,7 +233,7 @@ makePSU_legacy <- function(sf_poly,
   equal_areas$area <- st_area(equal_areas)/10000
   equal_areas <- equal_areas %>%
     group_by(id) %>%
-    summarize()
+    summarise()
   equal_areas$area <- st_area(equal_areas)/10000
 
   # Make centroids for PSU selection

@@ -31,7 +31,11 @@ Suggests:
     ggplot2,
     testthat (>= 3.0.0),
     knitr,
-    rmarkdown
+    rmarkdown,
+    shiny,
+    leaflet,
+    leaflet.extras,
+    zip
 VignetteBuilder: knitr
 URL: https://github.com/ogansell/spbalRef
 BugReports: https://github.com/ogansell/spbalRef/issues

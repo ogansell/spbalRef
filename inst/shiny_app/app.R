@@ -356,7 +356,8 @@ server <- function(input, output, session) {
 
     if (!is.null(results$primary)) {
       pal_col <- ifelse(is.na(results$primary$siteuse), "lightgray",
-                  ifelse(results$primary$siteuse == "Base", "lightgreen", "lightyellow"))
+                  ifelse(results$primary$siteuse == "Legacy", "orange",
+                  ifelse(results$primary$siteuse == "Base", "lightgreen", "lightyellow")))
       proxy <- proxy %>%
         addPolygons(data = sf::st_transform(results$primary, 4326), group = "primary",
                     color = "gray40", weight = 1, fillColor = pal_col, fillOpacity = 0.5,

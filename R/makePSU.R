@@ -678,8 +678,11 @@ makePSU <- function(sf_poly,
       stratum_var = NULL,
       maxtry = 500
     )
-    # Just use the base sites when there's no oversample
-    equal_area_sample <- equal_area_sample$sites_base
+    # sp_rbind() merges sites_base with sites_legacy (siteuse = "Legacy");
+    # taking sites_base alone silently drops legacy sites from the selection,
+    # since grts() always returns them in a separate sites_legacy element
+    # rather than inside sites_base.
+    equal_area_sample <- sp_rbind(equal_area_sample)
   }
 
   # Join sample info back to PSUs
@@ -821,13 +824,14 @@ makePSU <- function(sf_poly,
 
     # 2. Map of PSUs with sample order
     plot(st_geometry(equal_areas),
-         col = ifelse(equal_areas$siteuse == "Base", "lightgreen",
-                      ifelse(equal_areas$siteuse == "Over", "lightyellow", "lightgray")),
+         col = ifelse(equal_areas$siteuse == "Legacy", "orange",
+               ifelse(equal_areas$siteuse == "Base", "lightgreen",
+                      ifelse(equal_areas$siteuse == "Over", "lightyellow", "lightgray"))),
          border = "gray40",
          main = "Primary Sample Units")
     legend("topright",
-           legend = c("Base", "Over", "Not selected"),
-           fill = c("lightgreen", "lightyellow", "lightgray"),
+           legend = c("Legacy", "Base", "Over", "Not selected"),
+           fill = c("orange", "lightgreen", "lightyellow", "lightgray"),
            border = "gray40",
            bty = "n")
 

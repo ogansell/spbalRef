@@ -10,16 +10,22 @@ Encoding: UTF-8
 LazyData: true
 Depends: 
     R (>= 3.5)
-Imports: 
+Imports:
     dplyr,
     sf,
+    spbal,
     spsurvey,
     anticlust,
     dismo,
     tidyr,
     tibble,
     stringr,
-    rlang
+    rlang,
+    geosphere,
+    igraph,
+    lwgeom,
+    spatialEco,
+    wmm
 Suggests:
     usethis,
     ggplot2,
